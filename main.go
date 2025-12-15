@@ -61,67 +61,7 @@ func CheckAndSend(url string, resultsCh chan CheckResult, wg *sync.WaitGroup) {
 	resultsCh <- result
 }
 
-func ShowResult(result CheckResult) {
-	fmt.Printf("URL: %s | Status: %s | Code: %d | Latency: %s\n",
-		result.URL, result.Status, result.StatusCode, result.Latency)
-}
-
-func main() {
-	var urls []string
-	var wg sync.WaitGroup
-	var wgCollector sync.WaitGroup
-
-	var urlength int = 0
-
-	resultsCh := make(chan CheckResult)
-
-	file, err := os.Open("urls.txt")
-
-	if err != nil {
-		log.Fatal("Please create a urls.txt with an URL each line.")
-	}
-
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-
-	for scanner.Scan() {
-		line := scanner.Text()
-
-		if line == "" {
-			continue
-		}
-
-		urls = append(urls, line)
-		x := len(line)
-		if x > urlength {
-			urlength = x
-		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		log.Fatalf("Error reading file: %v", err)
-	}
-
-	for _, url := range urls {
-		wg.Add(1)
-		go CheckAndSend(url, resultsCh, &wg)
-	}
-
-	var finalResults []CheckResult
-
-	wgCollector.Go(func() {
-		for result := range resultsCh {
-			finalResults = append(finalResults, result)
-		}
-	})
-
-	wg.Wait()
-
-	close(resultsCh)
-
-	wgCollector.Wait()
-
+func ShowResult(urlength int, finalResults []CheckResult) {
 	const headerFormat = "| %-*s | %-10s | %-5s | %-10s | %s\n"
 	const lineFormat = "| %-*s | %-10s | %-5d | %-10s | %s\n"
 
@@ -149,4 +89,63 @@ func main() {
 			result.Latency.Round(time.Millisecond),
 			errorMsg)
 	}
+}
+
+func FillUrls() (resultsCh chan CheckResult, urls []string, urlength int) {
+	resultsCh = make(chan CheckResult)
+
+	file, err := os.Open(os.Args[1])
+
+	if err != nil {
+		log.Fatal("Please create a urls.txt with an URL each line.")
+	}
+
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		if line == "" {
+			continue
+		}
+		urls = append(urls, line)
+		x := len(line)
+		if x > urlength {
+			urlength = x
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		log.Fatalf("Error reading file: %v", err)
+	}
+	return
+}
+
+func main() {
+	var wg sync.WaitGroup
+	var wgCollector sync.WaitGroup
+
+	resultsCh, urls, urlength := FillUrls()
+
+	for _, url := range urls {
+		wg.Add(1)
+		go CheckAndSend(url, resultsCh, &wg)
+	}
+
+	var finalResults []CheckResult
+
+	wgCollector.Go(func() {
+		for result := range resultsCh {
+			finalResults = append(finalResults, result)
+		}
+	})
+
+	wg.Wait()
+
+	close(resultsCh)
+
+	wgCollector.Wait()
+
+	ShowResult(urlength, finalResults)
 }

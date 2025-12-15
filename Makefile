@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-BINARY_NAME := myapp
+BINARY_NAME := service-monitor
 DIST_DIR := dist
 
 OSES := linux windows darwin
