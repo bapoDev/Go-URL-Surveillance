@@ -20,3 +20,9 @@ git clone https://github.com/bapoDev/Go-URL-Surveillance
 go build
 ./service-monitor <text file with URLs>
 ```
+
+## What's next ?
+
+- Flags for more customisation
+- Worker pool to not fry your RAM and CPU
+- Formatting in other files and outputs
